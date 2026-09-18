@@ -1,30 +1,61 @@
-'use client';
+import { Focus, Sliders, Save } from 'lucide-react';
+import PageHeader from '@/components/ui/PageHeader';
+import Card from '@/components/ui/Card';
+import Field from '@/components/ui/Field';
 
-import {useEffect,useMemo,useState} from 'react';
-import {Camera,Download,Focus,FolderOpen,ImagePlus,Lightbulb,Pause,Play,Save} from 'lucide-react';
-import {AppShell} from '@/components/AppShell';
-import {TopBar} from '@/components/TopBar';
-import {LensViewer} from '@/components/LensViewer';
-import {DatasetLoader} from '@/components/DatasetLoader';
-import {api,API} from '@/lib/api';
-import type {DatasetSummary,Sample,SystemInfo} from '@/types';
+export default function FocusPage() {
+  return (
+    <>
+      <PageHeader
+        eyebrow="Optics"
+        title="Focus Control"
+        subtitle="Manual and auto-focus calibration"
+        actions={<button className="btn primary sm" type="button"><Save size={14} /> Save Preset</button>}
+      />
 
-const tabs=[['general','General'],['lens','Lens'],['focus-resolution','Focus + Resolution'],['lighting','Lighting']] as const;
-export default function FocusPage(){
- const[info,setInfo]=useState<SystemInfo|null>(null);const[ds,setDs]=useState<DatasetSummary[]>([]);const[did,setDid]=useState('');const[samples,setSamples]=useState<Sample[]>([]);const[sid,setSid]=useState('');const[channel,setChannel]=useState('h');const[tab,setTab]=useState<string>('general');const[result,setResult]=useState<any>(null);const[config,setConfig]=useState<any>(null);const[lensState,setLensState]=useState(0);const[msg,setMsg]=useState('');const[grab,setGrab]=useState(false);const[loader,setLoader]=useState(false);
- async function refresh(prefer?:string){try{const[i,d,c]=await Promise.all([api.system(),api.datasets(),api.getFocusConfig()]);setInfo(i);setDs(d);setConfig(c);const id=prefer||did||d[0]?.id||'';if(id){setDid(id);const s=await api.samples(id);setSamples(s.items);const use=s.items.find(x=>x.id===sid)||s.items[0];if(use){setSid(use.id);setChannel(use.images.h?'h':use.images.d?'d':Object.keys(use.images)[0]||'h')}}}catch(e){setMsg((e as Error).message)}}
- useEffect(()=>{refresh()},[]);const sample=useMemo(()=>samples.find(x=>x.id===sid)||null,[samples,sid]);const labels={...(info?.settings.channel_labels||{}),h:'High Contrast',d:'Dark Field'};
- async function evaluate(){if(!sample)return;try{setResult(await api.focus(did,sid,channel,tab))}catch(e){setMsg((e as Error).message)}}
- useEffect(()=>{if(!grab)return;let cancelled=false;const run=async()=>{try{const r=await api.focus(did,sid,channel,tab);if(!cancelled)setResult(r)}catch{}};run();const t=setInterval(run,700);return()=>{cancelled=true;clearInterval(t)}},[grab,did,sid,channel,tab]);
- async function saveValues(){try{const r=await fetch(`${API}/setup/focus/save-values`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dataset_id:did,sample_id:sid,channel,tab})});if(!r.ok){setMsg(await r.text());return}const blob=await r.blob(),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='focus_values.txt';a.click();URL.revokeObjectURL(a.href)}catch(e){setMsg((e as Error).message)}}
- async function dataPackage(){try{const r=await fetch(`${API}/setup/data-package`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dataset_id:did,sample_id:sid,camera_head:1})});if(!r.ok){setMsg(await r.text());return}const blob=await r.blob(),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='hardware-jig-data-package.zip';a.click();URL.revokeObjectURL(a.href)}catch(e){setMsg((e as Error).message)}}
- async function snapshot(){try{const r=await api.snapshot(did,sid,channel);setMsg(`Image saved: ${r.saved}`)}catch(e){setMsg((e as Error).message)}}
- async function saveConfig(){if(!config)return;try{setConfig(await api.saveFocusConfig(config));setMsg('Focus comparison limits saved')}catch(e){setMsg((e as Error).message)}}
- return <AppShell><TopBar info={info} onRefresh={()=>refresh(did)}/>
-   <div className="pageHero entrance"><div><span className="eyebrowText"><Focus/> FOCUS CHECK</span><h2>Camera, Lens & Hardware-Jig Evaluation</h2><p>General brightness, lens checks, Focus + Resolution and Lighting workflows with Snap, cyclic Grab, comparison limits, gray-value probing, saved values and complete hardware-jig data package export.</p></div><div className="pageActions"><select value={did} onChange={e=>refresh(e.target.value)}>{ds.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select><select value={sid} onChange={e=>{setSid(e.target.value);const s=samples.find(x=>x.id===e.target.value);if(s)setChannel(s.images.h?'h':s.images.d?'d':Object.keys(s.images)[0]||'h')}}>{samples.map(s=><option key={s.id} value={s.id}>{s.position} · {s.metadata.defect_label||s.category}</option>)}</select><button onClick={()=>setLoader(true)}><FolderOpen/>Load images</button><button className="primaryAction" onClick={evaluate} disabled={!sample}><Lightbulb/>Snap / Evaluate</button><button className={grab?'dangerAction':'successAction'} onClick={()=>setGrab(v=>!v)} disabled={!sample}>{grab?<Pause/>:<Play/>}{grab?'Stop Grab':'Grab live'}</button><button onClick={snapshot} disabled={!sample}><Camera/>Save image</button><button onClick={saveValues} disabled={!sample}><Save/>Save values</button><button onClick={dataPackage} disabled={!sample}><Download/>Data package</button></div></div>
-   <div className="focusTabs entrance delay1">{tabs.map(([k,l])=><button disabled={grab} key={k} className={tab===k?'active':''} onClick={()=>{setTab(k);setResult(null)}}>{l}</button>)}</div>
-   <div className="focusLayout entrance delay2"><LensViewer datasetId={did} sample={sample} channel={channel} defects={[]} onChannel={setChannel} labels={labels} processing={grab}/><section className="glassPanel metricPanel"><div className="panelHead compact"><div><span className="eyebrowText">{tab.toUpperCase()}</span><h2>Calculated values</h2><p>Optimum = green · acceptable = yellow · outside = red</p></div><ImagePlus/></div>{tab==='lens'&&<div className="lensStateTabs">{['Not pierced / normal','Pierced / normal','Not pierced / reversed','Pierced / reversed'].map((x,i)=><button className={lensState===i?'active':''} key={x} onClick={()=>setLensState(i)}>{i+1}<span>{x}</span></button>)}</div>}<div className="metricList">{result?.metrics?.length?result.metrics.map((m:any)=><div key={m.key} className={`metricRow ${m.status}`}><span><b>{m.label}</b><small>Optimum {m.optimum[0]}–{m.optimum[1]} · Acceptable {m.acceptable[0]}–{m.acceptable[1]}</small></span><strong>{m.value}</strong><em>{m.status}</em></div>):<div className="largeEmpty"><Focus/><b>Ready for evaluation</b><span>Select a stored image and press Snap / Evaluate.</span></div>}</div>{result&&<div className={`overallResult ${result.status}`}>Overall check: <b>{result.status.toUpperCase()}</b></div>}</section></div>
-   <section className="glassPanel limitPanel entrance delay3"><div className="panelHead compact"><div><span className="eyebrowText">IMAGESETUP.CONF MODEL</span><h2>Comparison limits & role visibility</h2><p>Optimum and acceptable ranges control green / yellow / red result backgrounds. Outputs can be hidden below a configured user level.</p></div><button className="softButton" onClick={saveConfig}><Save/>Save limits</button></div><div className="limitTable"><div className="limitHeader"><span>Output</span><span>Acceptable min</span><span>Optimum min</span><span>Optimum max</span><span>Acceptable max</span><span>Minimum role</span></div>{config?.limits?.map((m:any,idx:number)=><div className="limitRow" key={m.key}><b>{m.label}</b>{['acceptable_min','optimum_min','optimum_max','acceptable_max'].map(k=><input key={k} type="number" step="0.01" value={m[k]} onChange={e=>{const limits=[...config.limits];limits[idx]={...limits[idx],[k]:Number(e.target.value)};setConfig({...config,limits})}}/>)}<select value={m.min_role} onChange={e=>{const limits=[...config.limits];limits[idx]={...limits[idx],min_role:e.target.value};setConfig({...config,limits})}}><option>NoUser</option><option>Operator</option><option>Service</option><option>Administrator</option></select></div>)}</div></section>
-   {msg&&<button className="toast" onClick={()=>setMsg('')}>{msg}</button>}<DatasetLoader open={loader} onClose={()=>setLoader(false)} onLoaded={id=>refresh(id)}/>
- </AppShell>
+      <div className="grid">
+        <Card title="Focus Preview" pad={false}>
+          <div className="viewer-stage tall">
+            <span className="corner tl" /><span className="corner tr" />
+            <span className="corner bl" /><span className="corner br" />
+            <div className="crosshair-h" /><div className="crosshair-v" />
+            <div className="stage-lens" />
+            <div className="focus-ring" style={{ top: '50%', left: '50%' }}>
+              <span />
+            </div>
+          </div>
+          <div className="viewer-foot">
+            <div className="vf-item"><span className="vf-k">Sharpness</span><span className="vf-v ok">0.94</span></div>
+            <div className="vf-item"><span className="vf-k">Z-Position</span><span className="vf-v">12.418 mm</span></div>
+            <div className="vf-item"><span className="vf-k">Contrast</span><span className="vf-v">82%</span></div>
+            <div className="vf-item"><span className="vf-k">Mode</span><span className="vf-v">Auto</span></div>
+          </div>
+        </Card>
+
+        <div className="side-col">
+          <Card title="Adjustments">
+            <div className="stack">
+              <Field label="Z-Position (mm)" hint="Coarse focus along optical axis">
+                <input className="input" type="range" min={0} max={25} step={0.001} defaultValue={12.418} />
+              </Field>
+              <Field label="Aperture">
+                <input className="input" type="range" min={1} max={16} defaultValue={5} />
+              </Field>
+              <Field label="Exposure (ms)">
+                <input className="input" type="range" min={1} max={30} step={0.1} defaultValue={8.2} />
+              </Field>
+              <button className="btn primary full" type="button"><Focus size={16} /> Auto-Focus Now</button>
+            </div>
+          </Card>
+
+          <Card title="Quick Actions">
+            <div className="stack">
+              <button className="btn ghost full" type="button"><Sliders size={16} /> Load Calibration</button>
+              <button className="btn ghost full" type="button"><Save size={16} /> Save as Preset</button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </>
+  );
 }

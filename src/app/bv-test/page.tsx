@@ -1,27 +1,53 @@
-'use client';
+import { FlaskConical, Play, CheckCircle2, XCircle } from 'lucide-react';
+import PageHeader from '@/components/ui/PageHeader';
+import Card from '@/components/ui/Card';
 
-import {useEffect,useMemo,useState} from 'react';
-import {FolderOpen,Loader2,Microscope,Play,Square,Target} from 'lucide-react';
-import {AppShell} from '@/components/AppShell';
-import {TopBar} from '@/components/TopBar';
-import {DatasetLoader} from '@/components/DatasetLoader';
-import {LensViewer} from '@/components/LensViewer';
-import {api,WS_API} from '@/lib/api';
-import type {DatasetSummary,InspectionResult,Job,Sample,SystemInfo} from '@/types';
+const TESTS = [
+  { name: 'Brightness Uniformity', result: 'pass', value: '98.2%' },
+  { name: 'Color Accuracy', result: 'pass', value: 'ΔE 0.42' },
+  { name: 'Edge Sharpness', result: 'pass', value: '0.91' },
+  { name: 'Distortion', result: 'warn', value: '0.8%' },
+  { name: 'Chromatic Aberration', result: 'pass', value: '0.02 px' },
+  { name: 'Noise Floor', result: 'pass', value: '1.2 dB' },
+  { name: 'Optical Centering', result: 'fail', value: '1.4 px' },
+] as const;
 
-export default function BVTestPage(){
- const[info,setInfo]=useState<SystemInfo|null>(null);const[ds,setDs]=useState<DatasetSummary[]>([]);const[did,setDid]=useState('');const[samples,setSamples]=useState<Sample[]>([]);const[results,setResults]=useState<InspectionResult[]>([]);const[current,setCurrent]=useState('');const[channel,setChannel]=useState('h');const[job,setJob]=useState<Job|null>(null);const[loader,setLoader]=useState(false);const[busy,setBusy]=useState(false);const[scripts,setScripts]=useState<any[]>([]);const[lensType,setLensType]=useState('TOR');const[msg,setMsg]=useState('');
- async function sys(){try{setInfo(await api.system())}catch(e){setMsg((e as Error).message)}}
- async function refresh(prefer?:string){try{const[d,b]=await Promise.all([api.datasets(),api.bvScripts()]);setDs(d);setScripts(b.scripts||[]);const id=prefer||did||d[0]?.id||'';if(id){setDid(id);const[s,r]=await Promise.all([api.samples(id),api.results(id)]);setSamples(s.items);setResults(r.items);if(s.items[0]){setCurrent(s.items[0].id);setChannel(s.items[0].images.h?'h':s.items[0].images.d?'d':Object.keys(s.items[0].images)[0]||'h')}}}catch(e){setMsg((e as Error).message)}}
- useEffect(()=>{sys();refresh()},[]);
- const sample=useMemo(()=>samples.find(x=>x.id===current)||null,[samples,current]);const result=useMemo(()=>results.find(x=>x.sample_id===current),[results,current]);const labels={...(info?.settings.channel_labels||{}),h:'High Contrast',d:'Dark Field'};
- async function evaluateSelected(){if(!did||!sample)return;setBusy(true);try{const r=await api.inspectOne(did,sample.id);setResults(p=>[...p.filter(x=>x.sample_id!==r.sample_id),r])}catch(e){setMsg((e as Error).message)}finally{setBusy(false)}}
- async function run(){if(!did)return;setBusy(true);try{const script=scripts.find(x=>x.lens_type===lensType)?.name;const j=await api.run(did,undefined,lensType,script);setJob(j);const ws=new WebSocket(`${WS_API}/ws/jobs/${j.id}`);ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.job)setJob(m.job);if(m.result){setResults(p=>[...p.filter(x=>x.sample_id!==m.result.sample_id),m.result]);setCurrent(m.result.sample_id)}if(m.type==='failed')setMsg(m.job?.error||'BV Test job failed')};ws.onerror=()=>setMsg('Live result stream disconnected. The job can still finish on the backend.')}catch(e){setMsg((e as Error).message)}finally{setBusy(false)}}
- return <AppShell><TopBar info={info} onRefresh={sys}/>
-   <div className="pageHero entrance"><div><span className="eyebrowText"><Microscope/> BV TEST</span><h2>HALCON Script & Image-Folder Evaluation</h2><p>Manual-compatible offline BV test: load previously saved images, select the lens script, evaluate a single lens or a complete folder, review normal production-style results and stop a running evaluation.</p></div><div className="pageActions"><select value={did} onChange={e=>refresh(e.target.value)}>{ds.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select><select value={lensType} onChange={e=>setLensType(e.target.value)}>{scripts.map(s=><option key={s.lens_type} value={s.lens_type}>{s.lens_type} · {s.name}</option>)}</select><button onClick={()=>setLoader(true)}><FolderOpen/>Load image folder</button><button onClick={evaluateSelected} disabled={!sample||busy}><Target/>Evaluate selected</button><button className="primaryAction" onClick={run} disabled={!did||busy}>{busy?<Loader2 className="spin"/>:<Play/>}Evaluate folder</button><button onClick={()=>job&&api.cancel(job.id)} disabled={!job||job.status!=='running'}><Square/>Stop</button></div></div>
-   <div className="bvLayout entrance delay1"><LensViewer datasetId={did} sample={sample} channel={channel} defects={result?.defects||[]} onChannel={setChannel} labels={labels} selectedDefect={0} processing={job?.status==='running'}/><section className="glassPanel sampleRail"><div className="panelHead compact"><div><span className="eyebrowText">IMAGE FOLDER</span><h2>Samples</h2><p>{samples.length} logical lenses · .h = High Contrast · .d = Dark Field</p></div><b>{job?`${job.completed}/${job.total}`:'Ready'}</b></div><div className="sampleList">{samples.map(s=>{const r=results.find(x=>x.sample_id===s.id);return <button key={s.id} className={s.id===current?'active':''} onClick={()=>{setCurrent(s.id);if(!s.images[channel])setChannel(s.images.h?'h':s.images.d?'d':Object.keys(s.images)[0]||'h')}}><i className={(r?.status||'IDLE').toLowerCase()}/><span><b>{s.position}. {s.metadata.defect_label||s.category}</b><small>{Object.keys(s.images).map(c=>labels[c]||c.toUpperCase()).join(' · ')}</small></span><em>{r?.status||'WAIT'}</em></button>})}</div></section></div>
-   <section className="glassPanel outputPanel entrance delay2"><div className="panelHead compact"><div><span className="eyebrowText">EVALUATION OUTPUT</span><h2>Current result</h2><p>Same result contract used by the production adapter.</p></div></div><div className="outputStats"><Stat l="Result" v={result?.status||'Not evaluated'} tone={(result?.status||'').toLowerCase()}/><Stat l="Expected / file label" v={result?.expected_label||sample?.metadata.defect_label||'—'}/><Stat l="Script" v={scripts.find(x=>x.lens_type===lensType)?.name||'—'}/><Stat l="Defects" v={String(result?.defects.length||0)}/></div><pre className="jsonOutput">{JSON.stringify(result||{message:'Select a sample or run folder evaluation'},null,2)}</pre></section>
-   {msg&&<button className="toast" onClick={()=>setMsg('')}>{msg}</button>}<DatasetLoader open={loader} onClose={()=>setLoader(false)} onLoaded={id=>refresh(id)}/>
- </AppShell>
+export default function BVTestPage() {
+  const passed = TESTS.filter((t) => t.result === 'pass').length;
+  const failed = TESTS.filter((t) => t.result === 'fail').length;
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Diagnostics"
+        title="Brightness & Vignetting Test"
+        subtitle="Optical quality verification suite"
+        actions={<button className="btn primary sm" type="button"><Play size={14} /> Run All</button>}
+      />
+
+      <section className="stats-row">
+        <div className="mini-stat"><CheckCircle2 size={16} style={{ color: 'var(--green)' }} />
+          <div><span className="mini-k">Passed</span><span className="mini-v mono">{passed}</span></div></div>
+        <div className="mini-stat"><XCircle size={16} style={{ color: 'var(--red)' }} />
+          <div><span className="mini-k">Failed</span><span className="mini-v mono">{failed}</span></div></div>
+        <div className="mini-stat"><FlaskConical size={16} />
+          <div><span className="mini-k">Total</span><span className="mini-v mono">{TESTS.length}</span></div></div>
+      </section>
+
+      <Card title="Test Results" subtitle="Last run: 3 minutes ago" pad={false}>
+        <div className="test-list">
+          {TESTS.map((t) => (
+            <div key={t.name} className="test-row">
+              <span className={`test-dot ${t.result}`} />
+              <span className="test-name">{t.name}</span>
+              <span className="test-value mono">{t.value}</span>
+              <span className={`status ${t.result === 'pass' ? 'pass' : t.result === 'fail' ? 'fail' : 'warn'}`}>
+                {t.result === 'pass' ? 'Pass' : t.result === 'fail' ? 'Failed' : 'Warning'}
+              </span>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </>
+  );
 }
-function Stat({l,v,tone=''}:{l:string;v:string;tone?:string}){return <div><small>{l}</small><b className={tone}>{v}</b></div>}

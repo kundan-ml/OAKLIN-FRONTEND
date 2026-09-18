@@ -18,6 +18,23 @@ export function InspectionCanvas({imageUrl,defects,selectedDefect=0,showDefects=
    let revoked='';setProbe(null);setError('');
    if(!imageUrl){source.current=null;pixels.current=null;setState('idle');return}
    setState('loading');
+   if(imageUrl.startsWith('demo:')){
+     const parts=imageUrl.split(':'),position=Number(parts[3]||7),channel=parts[4]||'h',status=parts[5]||'OK';
+     const p=document.createElement('canvas');p.width=900;p.height=900;const ctx=p.getContext('2d');
+     if(ctx){
+       const bg=ctx.createRadialGradient(450,430,60,450,450,445);bg.addColorStop(0,'#1d2428');bg.addColorStop(.76,'#080d11');bg.addColorStop(1,'#010305');ctx.fillStyle=bg;ctx.fillRect(0,0,900,900);
+       ctx.save();ctx.shadowColor='rgba(218,238,242,.48)';ctx.shadowBlur=34;ctx.beginPath();ctx.arc(450,450,340,0,Math.PI*2);ctx.fillStyle=channel==='d'?'#535d61':'#aeb5b3';ctx.fill();ctx.restore();
+       const lens=ctx.createRadialGradient(410,390,45,450,450,332);lens.addColorStop(0,channel==='d'?'#6f787a':'#cbd0cd');lens.addColorStop(.52,channel==='d'?'#596365':'#afb6b3');lens.addColorStop(.88,channel==='d'?'#434d50':'#929b99');lens.addColorStop(1,'#d6dcd8');ctx.beginPath();ctx.arc(450,450,323,0,Math.PI*2);ctx.fillStyle=lens;ctx.fill();
+       ctx.strokeStyle='rgba(5,11,14,.94)';ctx.lineWidth=8;ctx.beginPath();ctx.arc(450,450,295,0,Math.PI*2);ctx.stroke();
+       ctx.strokeStyle='rgba(238,246,244,.13)';ctx.lineWidth=2;for(let radius=82;radius<282;radius+=31){ctx.beginPath();ctx.arc(450,450,radius,0,Math.PI*2);ctx.stroke()}
+       let seed=position*173+29;for(let n=0;n<95;n+=1){seed=(seed*9301+49297)%233280;const angle=(seed/233280)*Math.PI*2;seed=(seed*9301+49297)%233280;const radius=45+(seed/233280)*250;const x=450+Math.cos(angle)*radius,y=450+Math.sin(angle)*radius;ctx.fillStyle=`rgba(25,32,34,${.025+(n%5)*.008})`;ctx.beginPath();ctx.arc(x,y,1+(n%3)*.45,0,Math.PI*2);ctx.fill()}
+       ctx.strokeStyle='rgba(20,28,30,.58)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(600,420);ctx.lineTo(673,440);ctx.lineTo(704,434);ctx.stroke();ctx.beginPath();ctx.moveTo(618,447);ctx.lineTo(682,460);ctx.stroke();
+       if(status!=='OK'){ctx.strokeStyle=status==='NOK'?'#ff2f8f':'#f2b94b';ctx.lineWidth=6;ctx.lineCap='round';[[.78,.24,.89,.33],[.75,.72,.86,.68],[.22,.71,.27,.75]].slice(0,status==='NOK'?3:1).forEach(([x1,y1,x2,y2])=>{ctx.beginPath();ctx.moveTo(x1*900,y1*900);ctx.quadraticCurveTo((x1+x2)*450+12,y1*900-18,x2*900,y2*900);ctx.stroke()})}
+       ctx.strokeStyle='rgba(255,255,255,.88)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(430,450);ctx.lineTo(470,450);ctx.moveTo(450,430);ctx.lineTo(450,470);ctx.stroke();
+     }
+     const i=new Image();i.decoding='async';i.onload=()=>{source.current=i;pixels.current=p;setState('ready');requestAnimationFrame(fit)};i.src=p.toDataURL('image/png');
+     return;
+   }
    const controller=new AbortController();
    (async()=>{try{
      const res=await fetch(imageUrl,{cache:'no-store',signal:controller.signal});if(!res.ok)throw new Error(`Image request failed (${res.status})`);

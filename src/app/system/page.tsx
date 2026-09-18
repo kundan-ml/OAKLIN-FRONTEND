@@ -1,29 +1,79 @@
-'use client';
-import {useEffect,useState} from 'react';
-import {BookOpen,CheckCircle2,CircleAlert,FolderTree,Info,RefreshCw,ServerCog,ShieldCheck} from 'lucide-react';
-import {AppShell} from '@/components/AppShell';
-import {TopBar} from '@/components/TopBar';
-import {api,manualUrl} from '@/lib/api';
-import type {LogRow,SystemInfo} from '@/types';
+import { Cpu, MemoryStick, Network, Thermometer, Activity, Zap } from 'lucide-react';
+import PageHeader from '@/components/ui/PageHeader';
+import Card from '@/components/ui/Card';
 
-const roleMatrix=[
- ['NoUser','Production view, WT history, basic image filter / storage'],
- ['Operator','Operator functions and production workflow controls'],
- ['Service','Set-up, registration, camera/focus and direct Inbox registration'],
- ['Administrator','All service functions plus protected configuration outputs']
+const METRICS = [
+  { label: 'CPU', value: 42, unit: '%', icon: Cpu },
+  { label: 'Memory', value: 61, unit: '%', icon: MemoryStick },
+  { label: 'Network', value: 12, unit: 'MB/s', icon: Network },
+  { label: 'Temperature', value: 58, unit: '°C', icon: Thermometer },
 ];
-export default function SystemPage(){
- const[info,setInfo]=useState<SystemInfo|null>(null),[version,setVersion]=useState<any>(null),[caps,setCaps]=useState<any[]>([]),[folders,setFolders]=useState<any>(null),[logs,setLogs]=useState<LogRow[]>([]),[msg,setMsg]=useState('');
- async function load(){try{const[i,v,c,f,l]=await Promise.all([api.system(),api.version(),api.capabilities(),api.folderStructure(),api.logs()]);setInfo(i);setVersion(v);setCaps(c);setFolders(f);setLogs(l.items.reverse())}catch(e){setMsg((e as Error).message)}}
- useEffect(()=>{load()},[]);
- return <AppShell><TopBar info={info} onRefresh={load}/>
-   <div className="pageHero entrance"><div><span className="eyebrowText"><ServerCog/> SYSTEM INFORMATION</span><h2>Version, Access, Help & Capability Status</h2><p>Version information, manual access, role semantics, Inbox/Outbox folder model, system messages and production-adapter readiness.</p></div><div className="pageActions"><a href={manualUrl()} target="_blank" rel="noreferrer"><BookOpen/>Open OKLIN3 manual</a><button onClick={load}><RefreshCw/>Refresh</button></div></div>
-   <div className="systemGrid entrance delay1">
-     <section className="glassPanel versionCard"><div className="panelHead compact"><div><span className="eyebrowText">VERSION INFO</span><h2>Software / Parameters</h2></div><Info/></div>{version&&<dl className="versionList"><dt>Software</dt><dd>{version.software_version}</dd><dt>Library / bridge</dt><dd>{version.library_version}</dd><dt>ML active</dt><dd>{String(version.machine_learning_active)}</dd><dt>ML model</dt><dd>{version.ml_model_id}</dd><dt>SmartCuvetteMemory</dt><dd>{String(version.smart_cuvette_memory_active)}</dd><dt>Last registration</dt><dd>{version.last_registration}</dd><dt>Lookup table</dt><dd>{version.lookup_table}</dd>{Object.entries(version.parameter_versions||{}).map(([k,v])=><span className="versionPair" key={k}><b>{k}</b><em>{String(v)}</em></span>)}</dl>}</section>
-     <section className="glassPanel capabilityCard"><div className="panelHead compact"><div><span className="eyebrowText">MANUAL FEATURE COVERAGE</span><h2>Frontend / adapter capability map</h2></div><CheckCircle2/></div><div className="capabilityList">{caps.map(c=><div key={c.id}><i className={c.implemented?'ok':'pending'}>{c.implemented?<CheckCircle2/>:<CircleAlert/>}</i><span><b>{c.title}</b><small>{c.notes}</small></span><em>{c.mode}</em></div>)}</div></section>
-     <section className="glassPanel accessCard"><div className="panelHead compact"><div><span className="eyebrowText">ACCESS PERMISSIONS</span><h2>Operator role model</h2><p>Matches the NoUser / Operator / Service / Administrator workflow.</p></div><ShieldCheck/></div><div className="roleMatrix">{roleMatrix.map(([role,detail],i)=><div key={role}><i>{i+1}</i><span><b>{role}</b><small>{detail}</small></span><em className={info?.session.role===role?'current':''}>{info?.session.role===role?'Current':''}</em></div>)}</div></section>
-     <section className="glassPanel folderCard"><div className="panelHead compact"><div><span className="eyebrowText">FOLDER STRUCTURE</span><h2>Inbox / Outbox / Local Settings</h2></div><FolderTree/></div><div className="folderList">{folders?.folders?.map((f:any)=><div key={f.name}><b>{f.name}</b><span>{f.purpose}</span></div>)}</div></section>
-     <section className="glassPanel systemLogCard wideSystem"><div className="panelHead compact"><div><span className="eyebrowText">SYSTEM MESSAGES</span><h2>Timestamped system log</h2><p>Internal flow messages, warnings and inspection events.</p></div></div><div className="messageList tall">{logs.map((l,i)=><div key={i}><time>{new Date(l.time).toLocaleString()}</time><i className={l.level}/><span>{l.message}</span></div>)}{!logs.length&&<div className="emptyState">No system messages</div>}</div></section>
-   </div>{msg&&<button className="toast" onClick={()=>setMsg('')}>{msg}</button>}
- </AppShell>
+
+export default function SystemPage() {
+  return (
+    <>
+      <PageHeader
+        eyebrow="Diagnostics"
+        title="System"
+        subtitle="Runtime metrics and service health"
+        actions={<span className="pill live"><span className="dot" /> Healthy</span>}
+      />
+
+      <section className="kpis">
+        {METRICS.map(({ label, value, unit, icon: Icon }) => (
+          <div className="kpi" key={label} style={{ '--accent': 'var(--cyan)', '--accent-soft': 'var(--cyan-soft)' } as React.CSSProperties}>
+            <div className="kpi-top">
+              <span className="kpi-label">{label}</span>
+              <span className="kpi-icon"><Icon size={16} /></span>
+            </div>
+            <div className="kpi-value">{value}<small>{unit}</small></div>
+            <div className="bar" style={{ marginTop: 8 }}>
+              <i style={{ width: `${Math.min(Number(value), 100)}%` }} />
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <div className="grid">
+        <Card title="Services" pad={false}>
+          <div className="test-list">
+            {[
+              { name: 'oaklin-api', status: 'running', uptime: '4d 12h' },
+              { name: 'halcon-bridge', status: 'running', uptime: '4d 12h' },
+              { name: 'camera-daemon', status: 'running', uptime: '4d 12h' },
+              { name: 'ws-stream', status: 'running', uptime: '2d 03h' },
+              { name: 'log-collector', status: 'warning', uptime: '1h 22m' },
+            ].map((s) => (
+              <div key={s.name} className="test-row">
+                <span className={`test-dot ${s.status === 'running' ? 'pass' : 'warn'}`} />
+                <span className="test-name mono">{s.name}</span>
+                <span className="test-value mono">{s.uptime}</span>
+                <span className={`status ${s.status === 'running' ? 'pass' : 'warn'}`}>
+                  {s.status === 'running' ? 'Running' : 'Warning'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <div className="side-col">
+          <Card title="Build Info">
+            <div className="kv">
+              <div className="kv-row"><span>Version</span><span className="mono">v1.4.2</span></div>
+              <div className="kv-row"><span>Commit</span><span className="mono">a8f3d21</span></div>
+              <div className="kv-row"><span>Node</span><span className="mono">20.11</span></div>
+              <div className="kv-row"><span>Next.js</span><span className="mono">15.0</span></div>
+            </div>
+          </Card>
+
+          <Card title="Quick Actions">
+            <div className="stack">
+              <button className="btn ghost full" type="button"><Activity size={16} /> View Logs</button>
+              <button className="btn ghost full" type="button"><Zap size={16} /> Restart Services</button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </>
+  );
 }

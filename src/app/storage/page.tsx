@@ -1,34 +1,70 @@
-'use client';
+import { FolderOpen, Upload, HardDrive, Trash2, Database } from 'lucide-react';
+import PageHeader from '@/components/ui/PageHeader';
+import Card from '@/components/ui/Card';
+import EmptyState from '@/components/ui/EmptyState';
 
-import {useEffect,useState} from 'react';
-import {CalendarClock,Database,ImageDown,Play,Save,Square,SlidersHorizontal} from 'lucide-react';
-import {AppShell} from '@/components/AppShell';
-import {TopBar} from '@/components/TopBar';
-import {api} from '@/lib/api';
-import type {ErrorClass,StorageRuntime,SystemInfo} from '@/types';
+const DATASETS = [
+  { name: 'batch_A-2409', count: 120, size: '2.4 GB', updated: '2 min ago' },
+  { name: 'batch_A-2408', count: 240, size: '4.1 GB', updated: '18 min ago' },
+  { name: 'batch_A-2407', count: 180, size: '3.2 GB', updated: '44 min ago' },
+  { name: 'calibration_set_v3', count: 64, size: '820 MB', updated: '2 hours ago' },
+];
 
-export default function StoragePage(){
- const[info,setInfo]=useState<SystemInfo|null>(null);const[filters,setFilters]=useState<any>(null);const[runtime,setRuntime]=useState<StorageRuntime|null>(null);const[errors,setErrors]=useState<ErrorClass[]>([]);const[msg,setMsg]=useState('');
- async function refresh(){try{const[i,f,r,e]=await Promise.all([api.system(),api.getFilters(),api.storageState(),api.errorMap()]);setInfo(i);setFilters(f);setRuntime(r);setErrors(e.lens_error_classes||[])}catch(e){setMsg((e as Error).message)}}
- useEffect(()=>{refresh()},[]);
- if(!filters)return <AppShell><div className="loadingPage">Loading image storage…</div></AppShell>;
- const toggle=(arr:any[],v:any)=>arr.includes(v)?arr.filter(x=>x!==v):[...arr,v];const allPositions=Array.from({length:16},(_,i)=>i+1);const allResults=['OK','NOK','WARN'];
- async function save(){try{setFilters(await api.saveFilters(filters));setMsg('Image filter settings saved')}catch(e){setMsg((e as Error).message)}}
- async function storageToggle(){try{setRuntime(runtime?.active?await api.storageStop():await api.storageStart())}catch(e){setMsg((e as Error).message)}}
- return <AppShell><TopBar info={info} onRefresh={refresh}/>
-   <div className="pageHero entrance"><div><span className="eyebrowText"><ImageDown/> IMAGE FILTER & STORAGE</span><h2>Optimization Image Storage</h2><p>Position, result and defect filters, total/per-position/per-error counting, storage information, recurring schedules, interval storage and BMP/TIF output.</p></div><div className="pageActions"><button className="primaryAction" onClick={save}><Save/>Save settings</button><button className={runtime?.active?'dangerAction':'successAction'} onClick={storageToggle}>{runtime?.active?<Square/>:<Play/>}{runtime?.active?'Stop storage':'Start storage'}</button></div></div>
-   <div className="settingsGrid entrance delay1">
-     <section className="glassPanel formCard"><CardHead icon={<SlidersHorizontal/>} title="Filter selection" sub="Error class and WT position selections are combined using AND"/><div className="formBody">
-       <Field label="Storage information (max 50 characters)"><input maxLength={50} value={filters.storage_information} onChange={e=>setFilters({...filters,storage_information:e.target.value})}/><small>{filters.storage_information?.length||0}/50 characters</small></Field>
-       <div className="fieldBlock"><div className="fieldToolbar"><label>WT positions</label><span><button onClick={()=>setFilters({...filters,positions:allPositions})}>All activate</button><button onClick={()=>setFilters({...filters,positions:[]})}>All deactivate</button></span></div><div className="chipGrid sixteen">{allPositions.map(p=><button key={p} className={filters.positions.includes(p)?'active':''} onClick={()=>setFilters({...filters,positions:toggle(filters.positions,p).sort((a:number,b:number)=>a-b)})}>{p}</button>)}</div></div>
-       <div className="fieldBlock"><div className="fieldToolbar"><label>Evaluation results</label><span><button onClick={()=>setFilters({...filters,result_types:allResults})}>All</button><button onClick={()=>setFilters({...filters,result_types:[]})}>None</button></span></div><div className="chipGrid three">{allResults.map(r=><button key={r} className={`${r.toLowerCase()} ${filters.result_types.includes(r)?'active':''}`} onClick={()=>setFilters({...filters,result_types:toggle(filters.result_types,r)})}>{r}</button>)}</div></div>
-       <div className="fieldBlock"><div className="fieldToolbar"><label>Defect classes (optional)</label><span><button onClick={()=>setFilters({...filters,error_classes:errors.map(e=>e.label)})}>All activate</button><button onClick={()=>setFilters({...filters,error_classes:[]})}>All deactivate</button></span></div><div className="errorChips">{errors.map(e=><button key={e.key} className={filters.error_classes.includes(e.label)?'active':''} onClick={()=>setFilters({...filters,error_classes:toggle(filters.error_classes,e.label)})}><i style={{background:e.color}}/>{e.label}</button>)}</div></div>
-       <label className="switchRow"><input type="checkbox" checked={filters.apply_to_display} onChange={e=>setFilters({...filters,apply_to_display:e.target.checked})}/><span/>Apply these filters to the main image display</label>
-     </div></section>
-     <section className="glassPanel formCard"><CardHead icon={<Database/>} title="Storage counting" sub="Total number / per position / per error modes"/><div className="formBody twoCols"><Field label="Storage path"><input value={filters.storage_path} onChange={e=>setFilters({...filters,storage_path:e.target.value})}/></Field><Field label="Number of lenses"><input type="number" min={1} value={filters.image_count} onChange={e=>setFilters({...filters,image_count:Number(e.target.value)})}/></Field><Field label="Storage mode"><select value={filters.storage_mode} onChange={e=>setFilters({...filters,storage_mode:e.target.value})}><option value="total">Total number</option><option value="per-position">Per position</option><option value="per-error">Per error class</option></select></Field><Field label="Image format"><input value={info?.settings.image_format||'BMP'} readOnly/><small>TIF can carry metadata; BMP uses external registration data.</small></Field></div><div className="runtimeCard"><div><span className={`runtimeLamp ${runtime?.active?'on':''}`}/><b>{runtime?.active?'Storage ACTIVE':'Storage stopped'}</b><small>{runtime?.reason||'Ready'}</small></div><div><small>Saved lenses</small><b>{runtime?.saved_lenses||0}</b></div><div><small>Saved images</small><b>{runtime?.saved_images||0}</b></div><div><small>Events</small><b>{runtime?.event_count||0}</b></div></div></section>
-     <section className="glassPanel formCard wide"><CardHead icon={<CalendarClock/>} title="Recurring image storage" sub="Daily/weekly series, optional interval storage and final criteria"/><div className="formBody scheduleGrid"><label className="switchRow"><input type="checkbox" checked={filters.recurring.enabled} onChange={e=>setFilters({...filters,recurring:{...filters.recurring,enabled:e.target.checked}})}/><span/>Enable recurring storage</label><Field label="Start date"><input type="date" value={filters.recurring.start_date} onChange={e=>setFilters({...filters,recurring:{...filters.recurring,start_date:e.target.value}})}/></Field><Field label="Start time"><input type="time" value={filters.recurring.start_time} onChange={e=>setFilters({...filters,recurring:{...filters.recurring,start_time:e.target.value}})}/></Field><Field label="Pattern"><select value={filters.recurring.pattern} onChange={e=>setFilters({...filters,recurring:{...filters.recurring,pattern:e.target.value}})}><option value="daily">Daily</option><option value="weekly">Weekly</option></select></Field><Field label={filters.recurring.pattern==='daily'?'Every N days':'Every N weeks'}><input type="number" min={1} value={filters.recurring.every_n} onChange={e=>setFilters({...filters,recurring:{...filters.recurring,every_n:Number(e.target.value)}})}/></Field><label className="switchRow"><input type="checkbox" checked={filters.recurring.interval_enabled} onChange={e=>setFilters({...filters,recurring:{...filters.recurring,interval_enabled:e.target.checked}})}/><span/>Use interval storage</label><Field label="Interval minutes"><input type="number" min={1} disabled={!filters.recurring.interval_enabled} value={filters.recurring.interval_minutes} onChange={e=>setFilters({...filters,recurring:{...filters.recurring,interval_minutes:Number(e.target.value)}})}/></Field><Field label="End criterion"><select value={filters.recurring.end_mode} onChange={e=>setFilters({...filters,recurring:{...filters.recurring,end_mode:e.target.value}})}><option value="never">Never</option><option value="date">On date</option><option value="events">After events</option></select></Field>{filters.recurring.end_mode==='date'&&<Field label="End date"><input type="date" value={filters.recurring.end_date} onChange={e=>setFilters({...filters,recurring:{...filters.recurring,end_date:e.target.value}})}/></Field>}{filters.recurring.end_mode==='events'&&<Field label="End after events"><input type="number" min={1} value={filters.recurring.end_after_events} onChange={e=>setFilters({...filters,recurring:{...filters.recurring,end_after_events:Number(e.target.value)}})}/></Field>}<div className="fieldBlock spanAll"><label>Weekly days</label><div className="weekdayRow">{['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d,i)=><button type="button" key={d} disabled={filters.recurring.pattern!=='weekly'} className={filters.recurring.weekdays.includes(i)?'active':''} onClick={()=>setFilters({...filters,recurring:{...filters.recurring,weekdays:toggle(filters.recurring.weekdays,i).sort()}})}>{d}</button>)}</div></div></div></section>
-   </div>{msg&&<button className="toast" onClick={()=>setMsg('')}>{msg}</button>}
- </AppShell>
+export default function StoragePage() {
+  return (
+    <>
+      <PageHeader
+        eyebrow="Data"
+        title="Storage & Datasets"
+        subtitle="Manage captured datasets and calibration sets"
+        actions={
+          <>
+            <button className="btn ghost sm" type="button"><Upload size={14} /> Upload</button>
+            <button className="btn primary sm" type="button"><FolderOpen size={14} /> Load from path</button>
+          </>
+        }
+      />
+
+      <section className="stats-row">
+        <div className="mini-stat">
+          <HardDrive size={16} />
+          <div><span className="mini-k">Used</span><span className="mini-v mono">248 GB</span></div>
+        </div>
+        <div className="mini-stat">
+          <Database size={16} />
+          <div><span className="mini-k">Datasets</span><span className="mini-v mono">34</span></div>
+        </div>
+        <div className="mini-stat">
+          <FolderOpen size={16} />
+          <div><span className="mini-k">Free</span><span className="mini-v mono">776 GB</span></div>
+        </div>
+      </section>
+
+      <Card title="Datasets" subtitle="4 of 34 shown" pad={false}>
+        {DATASETS.length === 0 ? (
+          <EmptyState icon={FolderOpen} title="No datasets yet" description="Upload or load a dataset to get started." />
+        ) : (
+          <div className="dataset-grid">
+            {DATASETS.map((d) => (
+              <div key={d.name} className="dataset">
+                <div className="dataset-icon"><FolderOpen size={18} /></div>
+                <div className="dataset-body">
+                  <h4>{d.name}</h4>
+                  <div className="dataset-meta">
+                    <span className="mono">{d.count} files</span>
+                    <span className="dot-sep" />
+                    <span className="mono">{d.size}</span>
+                  </div>
+                  <span className="dataset-time">{d.updated}</span>
+                </div>
+                <button className="icon-btn danger" type="button" aria-label="Delete">
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </>
+  );
 }
-function CardHead({icon,title,sub}:{icon:React.ReactNode;title:string;sub:string}){return <div className="panelHead compact"><div><span className="eyebrowText">CONFIGURATION</span><h2>{title}</h2><p>{sub}</p></div>{icon}</div>}
-function Field({label,children}:{label:string;children:React.ReactNode}){return <label className="field"><span>{label}</span>{children}</label>}

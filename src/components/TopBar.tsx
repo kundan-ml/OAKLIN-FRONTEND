@@ -1,51 +1,42 @@
 'use client';
 
 import {useEffect,useMemo,useState} from 'react';
-import {ChevronDown,CircleUserRound,Database,LogIn,Palette,RefreshCw,ShieldCheck} from 'lucide-react';
+import {Activity,ChevronDown,CircleUserRound,Database,FolderUp,LogIn,Palette,RefreshCw,Settings2,ShieldCheck} from 'lucide-react';
 import {api} from '@/lib/api';
 import type {Role,SystemInfo} from '@/types';
 
 type DashboardStats={yieldPct:number;total:number;nokRate:number;evaluated:number};
-type Props={info:SystemInfo|null;onRefresh:()=>void;stats?:DashboardStats;workstation?:boolean};
+type Props={info:SystemInfo|null;onRefresh:()=>void;stats?:DashboardStats;workstation?:boolean;demo?:boolean;onUpload?:()=>void;onLayout?:()=>void};
 
-export function TopBar({info,onRefresh,stats,workstation=false}:Props){
+export function TopBar({info,onRefresh,stats,workstation=false,demo=false,onUpload,onLayout}:Props){
   const[now,setNow]=useState(new Date());
   const[busy,setBusy]=useState(false);
   const[open,setOpen]=useState(false);
   const[notice,setNotice]=useState('');
+  const[previewMode,setPreviewMode]=useState<'AUTO'|'SETUP'>('AUTO');
   const[user,setUser]=useState(info?.session.username||'service.dev');
   const[role,setRole]=useState<Role>(info?.session.role||'Administrator');
   useEffect(()=>{const t=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(t)},[]);
   useEffect(()=>{if(info){setUser(info.session.username);setRole(info.session.role)}},[info]);
-  const mode=info?.mode||'SETUP';
+  const mode=demo?previewMode:(info?.mode||'SETUP');
   const yieldPct=Math.max(0,Math.min(100,stats?.yieldPct||0));
   const halconOnline=useMemo(()=>!!info?.bridge&&!/offline|unavailable|none|disconnected/i.test(info.bridge),[info?.bridge]);
 
-  async function toggle(){setBusy(true);setNotice('');try{await api.setMode(mode==='AUTO'?'SETUP':'AUTO');onRefresh()}catch(e){setNotice((e as Error).message)}finally{setBusy(false)}}
+  async function toggle(){if(demo){setPreviewMode(mode==='AUTO'?'SETUP':'AUTO');return}setBusy(true);setNotice('');try{await api.setMode(mode==='AUTO'?'SETUP':'AUTO');onRefresh()}catch(e){setNotice((e as Error).message)}finally{setBusy(false)}}
   async function login(){setBusy(true);setNotice('');try{await api.login(user,role);setOpen(false);onRefresh()}catch(e){setNotice((e as Error).message)}finally{setBusy(false)}}
 
   if(workstation){
-    return <header className="oakMachineHeader">
-      <div className="oakHeaderBrand"><span className="oakMark"><i/><i/><i/><i/></span><span><b>OAKLIN</b><small>Optical Inspection</small></span></div>
-      <div className="oakHeaderContext">
-        <span><small>LINE</small><b>{info?.settings.line_name||'—'}</b></span><i/>
-        <span><small>STATION</small><b>{info?.settings.station_name||'—'}</b></span>
-      </div>
-      <button className={`oakMode ${mode.toLowerCase()}`} onClick={toggle} disabled={busy}><i/><span><b>{mode}</b><small>{mode==='AUTO'?'Automatic':'Set-up'}</small></span></button>
-      <div className="oakHealth" aria-label="System health">
-        <Health label="API" state={info?'ok':'bad'}/>
-        <Health label="HALCON" state={halconOnline?'ok':info?'warn':'bad'}/>
-        <Health label="PLC" state="unknown"/>
-        <Health label="CAMERA" state="unknown"/>
-      </div>
-      {stats&&<div className="oakHeaderKpis">
-        <span><small>YIELD</small><b>{yieldPct.toFixed(1)}%</b></span>
-        <span><small>NOK</small><b className={stats.nokRate>5?'dangerText':''}>{stats.nokRate.toFixed(1)}%</b></span>
-        <span className="oakEvaluated"><small>EVALUATED</small><b>{stats.evaluated.toLocaleString()}</b></span>
-      </div>}
-      <div className="oakClock"><b>{now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</b><small>{now.toLocaleDateString(undefined,{day:'2-digit',month:'short'})}</small></div>
+    return <header className="oakMachineHeader referenceMachineHeader">
+      <div className="referenceTitle"><span><b>Lens Inspection Control Center</b><small>Optical Quality Inspection System</small></span><div className="referenceTitleActions"><button onClick={onUpload} title="Upload image folder"><FolderUp/></button><button onClick={onLayout} title="Adjust dashboard layout"><Settings2/></button></div></div>
+      <div className="referenceContextCard"><small>Line 1</small><b>{info?.settings.line_name||'GDL6BV2'}</b></div>
+      <div className="referenceContextCard"><small>Station 2</small><b>Inspection</b></div>
+      <button className={`oakMode referenceMode ${mode.toLowerCase()}`} onClick={toggle} disabled={busy}><Activity/><span><b>{mode}</b><small>{mode==='AUTO'?'Automatic Operation':'Set-up Mode'}</small></span></button>
+      <div className="referenceConnection" title={halconOnline?'All inspection services online':'Preview connection'}><i/><span><b>Connected</b><small><Database/> PLC / Camera / DB</small></span></div>
+      {stats&&<div className="referenceYield"><i style={{'--yield':`${yieldPct*3.6}deg`} as React.CSSProperties}/><span><small>Yield (Current WT)</small><b>{yieldPct.toFixed(1)}%</b><em>{stats.evaluated.toLocaleString()} / 1,153</em></span></div>}
+      {stats&&<div className="referenceTotal"><small>Total Lenses Today</small><b>{stats.total.toLocaleString()}</b><em>NOK: {stats.nokRate.toFixed(1)}%</em></div>}
+      <div className="referenceClock"><small>{now.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'})}</small><b>{now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</b></div>
       <div className="userMenu oakUserMenu">
-        <button className="oakUser" onClick={()=>setOpen(v=>!v)} title="User & workstation"><CircleUserRound/><span><b>{info?.session.username||'Operator'}</b><small>{info?.session.role||'NoUser'}</small></span><ChevronDown/></button>
+        <button className="oakUser referenceUser" onClick={()=>setOpen(v=>!v)} title="User & workstation"><CircleUserRound/><span><b>{info?.session.username||'Operator'}</b><small>{info?.session.role||'Production'}</small></span><ChevronDown/></button>
         {open&&<div className="userPopover premiumUserPopover oakUserPopover">
           <div className="popoverTitle"><ShieldCheck/> User & workstation</div>
           <p className="popoverHint">Development identity. Production should obtain role/permissions from the authenticated backend.</p>
@@ -66,5 +57,3 @@ export function TopBar({info,onRefresh,stats,workstation=false}:Props){
     {notice&&<button className="oakHeaderNotice legacy" onClick={()=>setNotice('')}>{notice}</button>}
   </header>
 }
-
-function Health({label,state}:{label:string;state:'ok'|'warn'|'bad'|'unknown'}){return <span className={`oakHealthItem ${state}`} title={state==='unknown'?`${label} state is not exposed by the current backend`:`${label}: ${state}`}><i/><b>{label}</b></span>}

@@ -6,7 +6,7 @@ import {api} from '@/lib/api';
 
 export function DatasetLoader({open,onClose,onLoaded}:{open:boolean;onClose:()=>void;onLoaded:(id:string)=>void}){
   const[path,setPath]=useState('');
-  const[name,setName]=useState('Offline OKLIN dataset');
+  const[name,setName]=useState('OAKLIN inspection dataset');
   const[busy,setBusy]=useState(false);
   const[err,setErr]=useState('');
   const inputRef=useRef<HTMLInputElement>(null);
@@ -46,9 +46,9 @@ export function DatasetLoader({open,onClose,onLoaded}:{open:boolean;onClose:()=>
     <div className="modernModal">
       <button className="modalClose" onClick={onClose}><X/></button>
       <div className="modalBadge"><FolderInput/></div>
-      <span className="eyebrowText">OFFLINE INPUT</span>
-      <h2>Load inspection image folder</h2>
-      <p>Use a backend-local path or upload the complete directory tree from your browser. Files with the same base name are grouped into one logical lens.</p>
+      <span className="eyebrowText">IMAGE DATASET</span>
+      <h2>Upload inspection image folder</h2>
+      <p>Select a complete folder from this computer or provide a path already available to the inspection server. After import, every dashboard panel switches to the uploaded dataset automatically.</p>
 
       <label>Dataset name
         <input value={name} onChange={e=>setName(e.target.value)}/>
@@ -64,13 +64,15 @@ export function DatasetLoader({open,onClose,onLoaded}:{open:boolean;onClose:()=>
       <div className="orLine"><span>OR</span></div>
 
       <input ref={inputRef} type="file" multiple {...dirProps} hidden onChange={e=>upload(e.target.files)}/>
-      <button className="uploadFolder" onClick={()=>inputRef.current?.click()} disabled={busy}><FolderUp/>Upload folder from browser</button>
+      <button className="uploadFolder" onClick={()=>inputRef.current?.click()} disabled={busy}>{busy?<Loader2 className="spin"/>:<FolderUp/>}{busy?'Importing image folder…':'Choose and upload image folder'}</button>
 
       {err&&<div className="errorBox">{err}</div>}
 
       <div className="formatLegend">
         <span><b>.h.bmp</b> High Contrast</span>
         <span><b>.d.bmp</b> Dark Field</span>
+        <span><b>.n.bmp</b> Diffuse</span>
+        <span><b>.p.bmp</b> Phase Contrast</span>
       </div>
     </div>
   </div>;

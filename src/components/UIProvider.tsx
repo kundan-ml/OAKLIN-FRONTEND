@@ -18,19 +18,31 @@ export type UiPreferences={
   historyWidth:number;
   viewerWidth:number;
   detailsWidth:number;
+  inspectionHistoryWidth:number;
+  inspectionControlWidth:number;
+  inspectionDetailsWidth:number;
+  trayHeight:number;
   bottomHeight:number;
+  trendWidth:number;
+  logsWidth:number;
+  actionsWidth:number;
   showHistory:boolean;
   showDetails:boolean;
   showCommandBar:boolean;
   showKpis:boolean;
   showTray:boolean;
   showWorkspace:boolean;
+  showTrend:boolean;
+  showLogs:boolean;
+  showActions:boolean;
 };
 
 const DEFAULTS:UiPreferences={
-  theme:'midnight',accent:'azure',density:'compact',fontScale:.96,radius:6,glass:.99,motion:true,glow:false,
-  sidebarCollapsed:true,historyWidth:.66,viewerWidth:1.52,detailsWidth:.78,bottomHeight:188,
-  showHistory:true,showDetails:true,showCommandBar:false,showKpis:true,showTray:true,showWorkspace:true
+  theme:'midnight',accent:'azure',density:'compact',fontScale:1,radius:10,glass:1,motion:true,glow:false,
+  sidebarCollapsed:false,historyWidth:.94,viewerWidth:1.28,detailsWidth:.84,inspectionHistoryWidth:300,inspectionControlWidth:210,inspectionDetailsWidth:300,trayHeight:128,bottomHeight:198,
+  trendWidth:1.43,logsWidth:.82,actionsWidth:.69,
+  showHistory:true,showDetails:true,showCommandBar:false,showKpis:true,showTray:true,showWorkspace:true,
+  showTrend:true,showLogs:true,showActions:true
 };
 
 type Ctx={prefs:UiPreferences;set:<K extends keyof UiPreferences>(key:K,value:UiPreferences[K])=>void;patch:(value:Partial<UiPreferences>)=>void;reset:()=>void};
@@ -41,10 +53,10 @@ const ACCENT_HUES:Record<AccentPreset,string>={azure:'211',cyan:'190',violet:'25
 export function UIProvider({children}:{children:React.ReactNode}){
   const[prefs,setPrefs]=useState<UiPreferences>(DEFAULTS);
   useEffect(()=>{
-    try{const saved=localStorage.getItem('lens-ui-prefs-v7');if(saved)setPrefs({...DEFAULTS,...JSON.parse(saved)})}catch{}
+    try{const saved=localStorage.getItem('lens-ui-prefs-v10');if(saved)setPrefs({...DEFAULTS,...JSON.parse(saved)})}catch{}
   },[]);
   useEffect(()=>{
-    try{localStorage.setItem('lens-ui-prefs-v7',JSON.stringify(prefs))}catch{}
+    try{localStorage.setItem('lens-ui-prefs-v10',JSON.stringify(prefs))}catch{}
     const root=document.documentElement;
     root.dataset.theme=prefs.theme;
     root.dataset.density=prefs.density;
@@ -56,7 +68,16 @@ export function UIProvider({children}:{children:React.ReactNode}){
     root.style.setProperty('--history-fr',`${prefs.historyWidth}fr`);
     root.style.setProperty('--viewer-fr',`${prefs.viewerWidth}fr`);
     root.style.setProperty('--details-fr',`${prefs.detailsWidth}fr`);
+    root.style.setProperty('--inspection-history-width',`${prefs.inspectionHistoryWidth}px`);
+    root.style.setProperty('--inspection-control-width',`${prefs.inspectionControlWidth}px`);
+    root.style.setProperty('--inspection-details-width',`${prefs.inspectionDetailsWidth}px`);
+    root.style.setProperty('--dashboard-tray-height',`${prefs.trayHeight}px`);
     root.style.setProperty('--dashboard-bottom-height',`${prefs.bottomHeight}px`);
+    root.style.setProperty('--bottom-columns',[
+      prefs.showTrend?`${prefs.trendWidth}fr`:'',
+      prefs.showLogs?`${prefs.logsWidth}fr`:'',
+      prefs.showActions?`${prefs.actionsWidth}fr`:''
+    ].filter(Boolean).join(' ')||'1fr');
     root.dataset.glow=prefs.glow?'on':'off';
     root.dataset.sidebar=prefs.sidebarCollapsed?'collapsed':'expanded';
   },[prefs]);

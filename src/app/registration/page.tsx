@@ -1,25 +1,53 @@
-'use client';
+import { ScanLine, Upload, CheckCircle2, Crosshair } from 'lucide-react';
+import PageHeader from '@/components/ui/PageHeader';
+import Card from '@/components/ui/Card';
 
-import {useEffect,useMemo,useState} from 'react';
-import {Boxes,Camera,Download,FolderOpen,RefreshCw,Save,ShieldCheck} from 'lucide-react';
-import {AppShell} from '@/components/AppShell';
-import {TopBar} from '@/components/TopBar';
-import {LensViewer} from '@/components/LensViewer';
-import {DatasetLoader} from '@/components/DatasetLoader';
-import {api} from '@/lib/api';
-import type {DatasetSummary,Sample,SystemInfo} from '@/types';
+export default function RegistrationPage() {
+  return (
+    <>
+      <PageHeader
+        eyebrow="Calibration"
+        title="Image Registration"
+        subtitle="Align reference template with live capture"
+        actions={<button className="btn primary sm" type="button"><CheckCircle2 size={14} /> Confirm Alignment</button>}
+      />
 
-export default function RegistrationPage(){
- const[info,setInfo]=useState<SystemInfo|null>(null);const[ds,setDs]=useState<DatasetSummary[]>([]);const[did,setDid]=useState('');const[samples,setSamples]=useState<Sample[]>([]);const[sid,setSid]=useState('');const[channel,setChannel]=useState('h');const[result,setResult]=useState<any>(null);const[msg,setMsg]=useState('');const[loader,setLoader]=useState(false);
- async function refresh(prefer?:string){try{const[i,d,r]=await Promise.all([api.system(),api.datasets(),api.registrationCurrent()]);setInfo(i);setDs(d);if(r?.transforms)setResult(r);const id=prefer||did||d[0]?.id||'';if(!id)return;setDid(id);const s=await api.samples(id);setSamples(s.items);const use=s.items.find(x=>x.id===sid)||s.items[0];if(use){setSid(use.id);setChannel(use.images.h?'h':use.images.d?'d':Object.keys(use.images)[0]||'h')}}catch(e){setMsg((e as Error).message)}}
- useEffect(()=>{refresh()},[]);const sample=useMemo(()=>samples.find(x=>x.id===sid)||null,[samples,sid]);
- async function calculate(){try{setResult(await api.registrationRun(did,sid,1));setMsg('Registration calculated')}catch(e){setMsg((e as Error).message)}}
- async function saveOutbox(){try{const r=await api.registrationOutbox();setMsg(`Saved to Outbox: ${r.saved}`)}catch(e){setMsg((e as Error).message)}}
- async function directInbox(){if(!window.confirm('Transfer current registration directly to Inbox? The previous registration will be archived.'))return;try{const r=await api.registrationInbox();setMsg(`Transferred to Inbox: ${r.saved}`)}catch(e){setMsg((e as Error).message)}}
- async function saveImage(){if(!sample)return;try{const r=await api.snapshot(did,sample.id,channel);setMsg(`Registration image saved: ${r.saved}`)}catch(e){setMsg((e as Error).message)}}
- return <AppShell><TopBar info={info} onRefresh={()=>refresh(did)}/>
-   <div className="pageHero entrance"><div><span className="eyebrowText"><Boxes/> REGISTRATION</span><h2>Camera Registration & Image Scale</h2><p>Stored-image equivalent of the manual registration workflow: load registration images, calculate translation / rotation / scale, save images, stage data in Outbox or perform a privileged direct Inbox transfer.</p></div><div className="pageActions"><select value={did} onChange={e=>refresh(e.target.value)}>{ds.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select><select value={sid} onChange={e=>{setSid(e.target.value);const s=samples.find(x=>x.id===e.target.value);if(s)setChannel(s.images.h?'h':s.images.d?'d':Object.keys(s.images)[0]||'h')}}>{samples.map(s=><option key={s.id} value={s.id}>{s.position} · {s.metadata.code||s.category}</option>)}</select><button onClick={()=>setLoader(true)}><FolderOpen/>Load images</button><button onClick={saveImage} disabled={!sample}><Camera/>Save images</button><button className="primaryAction" onClick={calculate} disabled={!sample}><RefreshCw/>Register</button></div></div>
-   <div className="registrationLayout entrance delay1"><LensViewer datasetId={did} sample={sample} channel={channel} defects={[]} onChannel={setChannel} labels={{...(info?.settings.channel_labels||{}),h:'High Contrast',d:'Dark Field'}}/><section className="glassPanel regResult"><div className="panelHead compact"><div><span className="eyebrowText">CAMERA HEAD 1</span><h2>Corrective transforms</h2><p>Translation · rotation · scale · image scale</p></div><ShieldCheck/></div>{result?.transforms?.length?<div className="transformList">{result.transforms.map((t:any)=><div key={t.channel}><span className="channelBadge">{({h:'HIGH CONTRAST',d:'DARK FIELD'} as Record<string,string>)[t.channel]||(info?.settings.channel_labels[t.channel]||t.channel).toUpperCase()}</span><dl><dt>Translation X</dt><dd>{t.tx_px} px</dd><dt>Translation Y</dt><dd>{t.ty_px} px</dd><dt>Rotation</dt><dd>{t.rotation_deg}°</dd><dt>Scale</dt><dd>{t.scale}</dd><dt>Image scale</dt><dd>{t.um_per_pixel} µm/px</dd></dl></div>)}</div>:<div className="largeEmpty"><Boxes/><b>No registration result</b><span>Choose stored registration images and press Register.</span></div>}<div className="regActions"><button onClick={saveOutbox}><Save/>Save in Outbox</button><button className="warningAction" onClick={directInbox}><Download/>Direct Inbox (Service)</button></div><p className="noteText">Direct Inbox transfer is a privileged operation. The backend archives previous registration data and retains the latest five backups for traceability.</p></section></div>
-   {msg&&<button className="toast" onClick={()=>setMsg('')}>{msg}</button>}<DatasetLoader open={loader} onClose={()=>setLoader(false)} onLoaded={id=>refresh(id)}/>
- </AppShell>
+      <div className="grid">
+        <Card title="Registration Overlay" subtitle="Offset: 0.14 px · Rotation: 0.02°" pad={false}>
+          <div className="viewer-stage tall">
+            <span className="corner tl" /><span className="corner tr" />
+            <span className="corner bl" /><span className="corner br" />
+            <div className="reg-frame" />
+            <div className="reg-frame reg-live" />
+            <div className="crosshair-h" /><div className="crosshair-v" />
+          </div>
+          <div className="viewer-foot">
+            <div className="vf-item"><span className="vf-k">Alignment</span><span className="vf-v ok">Locked</span></div>
+            <div className="vf-item"><span className="vf-k">RMSE</span><span className="vf-v">0.18 px</span></div>
+            <div className="vf-item"><span className="vf-k">Rotation</span><span className="vf-v">0.02°</span></div>
+            <div className="vf-item"><span className="vf-k">Scale</span><span className="vf-v">1.0000</span></div>
+          </div>
+        </Card>
+
+        <div className="side-col">
+          <Card title="Reference">
+            <div className="stack">
+              <button className="btn ghost full" type="button"><Upload size={16} /> Upload Reference</button>
+              <button className="btn ghost full" type="button"><ScanLine size={16} /> Capture Reference</button>
+              <button className="btn ghost full" type="button"><Crosshair size={16} /> Manual Points</button>
+            </div>
+          </Card>
+
+          <Card title="Status">
+            <div className="kv">
+              <div className="kv-row"><span>Template</span><span className="mono">ref_v3.png</span></div>
+              <div className="kv-row"><span>Features</span><span className="mono">128</span></div>
+              <div className="kv-row"><span>Matches</span><span className="mono">124 / 128</span></div>
+              <div className="kv-row"><span>Confidence</span><span className="mono">99.8%</span></div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </>
+  );
 }

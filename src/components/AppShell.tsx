@@ -10,8 +10,8 @@ import {
   FolderArchive,
   History,
   ImageIcon,
+  LayoutDashboard,
   Microscope,
-  PanelTop,
   Settings,
   SlidersHorizontal,
   Wrench,
@@ -22,15 +22,13 @@ import {CustomizationDrawer} from './CustomizationDrawer';
 import {CommandPalette} from './CommandPalette';
 
 const items=[
-  ['/','Dashboard',PanelTop],
-  ['/history','WT History',History],
-  ['/storage','Image Storage',FolderArchive],
-  ['/bv-test','BV Test',Microscope],
-  ['/focus','Focus / Jig',ChartNoAxesCombined],
-  ['/registration','Registration',ImageIcon],
-  ['/setup','Camera Setup',Camera],
-  ['/settings','Settings',SlidersHorizontal],
-  ['/system','System / Help',Wrench],
+  ['/','Dashboard',LayoutDashboard],
+  ['/inspect','Inspection',Microscope],
+  ['#','WT History',History],
+  ['#','Statistics',ChartNoAxesCombined],
+  ['#','Recipe / Setup',SlidersHorizontal],
+  ['#','Maintenance',Settings],
+  ['#','System',Wrench],
 ] as const;
 
 export function AppShell({children}:{children:React.ReactNode}){
@@ -68,19 +66,20 @@ function ShellInner({children}:{children:React.ReactNode}){
 
   return <div className={`appShell ${prefs.sidebarCollapsed?'sidebarCollapsed':''}`}>
     <aside className="sideRail productionRail">
-      <button className="brandArea productionBrand" onClick={()=>setCustomize(true)} title="Customize interface">
+      <button className="brandArea productionBrand" onClick={()=>setCustomize(true)} title="Oaklin interface settings" aria-label="Open interface settings">
         <span className="brandAperture"><i/><i/><i/><i/><i/><i/></span>
       </button>
 
-      <nav className="productionNav">
+      <nav className="productionNav" aria-label="Primary navigation">
         {items.map(([href,label,Icon])=>
-          <Link key={href} href={href} title={label} className={`sideNav ${path===href?'active':''}`}>
+          <Link key={href} href={href} title={label} aria-current={path===href?'page':undefined} className={`sideNav ${path===href?'active':''}`}>
             <Icon/><span>{label}</span>
           </Link>
         )}
       </nav>
 
       <div className="railFoot productionRailFoot">
+        <div className="railOnline" title="Production line connected"><i/><span>Line online</span></div>
         <button className="sideNav utilityNav" onClick={()=>setCustomize(true)} title="Interface Studio">
           <Settings/><span>Customize</span>
         </button>
@@ -91,7 +90,7 @@ function ShellInner({children}:{children:React.ReactNode}){
         >
           {prefs.sidebarCollapsed?<ChevronsRight/>:<ChevronsLeft/>}
         </button>
-        <span className="buildLabel">v7.4</span>
+        <span className="buildLabel">OAKLIN · v7.4</span>
       </div>
     </aside>
 

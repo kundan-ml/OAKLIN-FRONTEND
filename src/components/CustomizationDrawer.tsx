@@ -92,6 +92,14 @@ export function CustomizationDrawer({open,onClose}:{open:boolean;onClose:()=>voi
           <Slider label="WT history width" value={prefs.historyWidth} min={.55} max={1.25} step={.01} suffix={prefs.historyWidth.toFixed(2)} onChange={v=>set('historyWidth',v)}/>
           <Slider label="Inspection viewer width" value={prefs.viewerWidth} min={.9} max={2.1} step={.01} suffix={prefs.viewerWidth.toFixed(2)} onChange={v=>set('viewerWidth',v)}/>
           <Slider label="Lens details width" value={prefs.detailsWidth} min={.55} max={1.25} step={.01} suffix={prefs.detailsWidth.toFixed(2)} onChange={v=>set('detailsWidth',v)}/>
+          <Slider label="Inspection history width" value={prefs.inspectionHistoryWidth} min={240} max={520} step={2} suffix={`${prefs.inspectionHistoryWidth}px`} onChange={v=>set('inspectionHistoryWidth',v)}/>
+          <Slider label="Inspection controls width" value={prefs.inspectionControlWidth} min={180} max={340} step={2} suffix={`${prefs.inspectionControlWidth}px`} onChange={v=>set('inspectionControlWidth',v)}/>
+          <Slider label="Inspection details width" value={prefs.inspectionDetailsWidth} min={250} max={520} step={2} suffix={`${prefs.inspectionDetailsWidth}px`} onChange={v=>set('inspectionDetailsWidth',v)}/>
+          <Slider label="Lens strip height" value={prefs.trayHeight} min={96} max={190} step={2} suffix={`${prefs.trayHeight}px`} onChange={v=>set('trayHeight',v)}/>
+          <Slider label="Bottom workspace height" value={prefs.bottomHeight} min={150} max={340} step={2} suffix={`${prefs.bottomHeight}px`} onChange={v=>set('bottomHeight',v)}/>
+          <Slider label="Trend panel width" value={prefs.trendWidth} min={.6} max={2.2} step={.01} suffix={prefs.trendWidth.toFixed(2)} onChange={v=>set('trendWidth',v)}/>
+          <Slider label="Logs panel width" value={prefs.logsWidth} min={.5} max={1.6} step={.01} suffix={prefs.logsWidth.toFixed(2)} onChange={v=>set('logsWidth',v)}/>
+          <Slider label="Quick actions width" value={prefs.actionsWidth} min={.5} max={1.4} step={.01} suffix={prefs.actionsWidth.toFixed(2)} onChange={v=>set('actionsWidth',v)}/>
           <div className="presetRow">
             <button onClick={()=>patch({historyWidth:.66,viewerWidth:1.72,detailsWidth:.68})}>Viewer focus</button>
             <button onClick={()=>patch({historyWidth:1.02,viewerWidth:1.20,detailsWidth:.82})}>History focus</button>
@@ -106,9 +114,15 @@ export function CustomizationDrawer({open,onClose}:{open:boolean;onClose:()=>voi
             <div><b>Visible modules</b><small>Hide sections that are not needed for a particular station</small></div>
           </div>
           <Toggle label="Dataset source ribbon" checked={prefs.showCommandBar} onChange={v=>set('showCommandBar',v)}/>
+          <Toggle label="Compact navigation rail" checked={prefs.sidebarCollapsed} onChange={v=>set('sidebarCollapsed',v)}/>
           <Toggle label="Top KPI metrics" checked={prefs.showKpis} onChange={v=>set('showKpis',v)}/>
+          <Toggle label="WT history matrix" checked={prefs.showHistory} onChange={v=>set('showHistory',v)}/>
+          <Toggle label="Current lens information" checked={prefs.showDetails} onChange={v=>set('showDetails',v)}/>
           <Toggle label="Current WT thumbnails" checked={prefs.showTray} onChange={v=>set('showTray',v)}/>
           <Toggle label="Yield / logs / quick actions" checked={prefs.showWorkspace} onChange={v=>set('showWorkspace',v)}/>
+          <Toggle label="Yield and trend panel" checked={prefs.showTrend} onChange={v=>set('showTrend',v)}/>
+          <Toggle label="System logs panel" checked={prefs.showLogs} onChange={v=>set('showLogs',v)}/>
+          <Toggle label="Quick actions panel" checked={prefs.showActions} onChange={v=>set('showActions',v)}/>
         </section>
       </div>
 
