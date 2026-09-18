@@ -32,7 +32,6 @@ export function InspectionCanvas({imageUrl,defects,selectedDefect=0,showDefects=
    const c=canvas.current,h=host.current;if(!c||!h)return;const r=h.getBoundingClientRect();if(r.width<2||r.height<2)return;const dpr=Math.min(window.devicePixelRatio||1,2);const w=Math.max(1,Math.round(r.width*dpr)),hh=Math.max(1,Math.round(r.height*dpr));if(c.width!==w||c.height!==hh){c.width=w;c.height=hh;c.style.width=`${r.width}px`;c.style.height=`${r.height}px`}
    const ctx=c.getContext('2d');if(!ctx)return;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,r.width,r.height);
    const bg=ctx.createRadialGradient(r.width*.50,r.height*.44,10,r.width*.50,r.height*.50,Math.max(r.width,r.height)*.75);bg.addColorStop(0,'#122236');bg.addColorStop(.52,'#07111c');bg.addColorStop(1,'#02060b');ctx.fillStyle=bg;ctx.fillRect(0,0,r.width,r.height);
-   // Subtle inspection grid gives the empty/loading state structure without stealing attention.
    ctx.save();ctx.strokeStyle='rgba(112,176,222,.035)';ctx.lineWidth=1;for(let x=0;x<r.width;x+=32){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,r.height);ctx.stroke()}for(let y=0;y<r.height;y+=32){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(r.width,y);ctx.stroke()}ctx.restore();
    const i=source.current;if(!i||state!=='ready'){
      ctx.textAlign='center';ctx.fillStyle=state==='error'?'#ff8da0':'#87a1b6';ctx.font='600 13px Inter,system-ui';ctx.fillText(state==='loading'?'Loading inspection image…':state==='error'?'Image preview unavailable':'Select a lens to start inspection',r.width/2,r.height/2-4);if(state==='error'){ctx.fillStyle='#60798d';ctx.font='11px Inter,system-ui';ctx.fillText(error.slice(0,90),r.width/2,r.height/2+18)}return;
@@ -43,7 +42,7 @@ export function InspectionCanvas({imageUrl,defects,selectedDefect=0,showDefects=
  },[defects,error,selectedDefect,showCrosshair,showDefects,state,view]);
 
  useEffect(()=>{if(frame.current)cancelAnimationFrame(frame.current);frame.current=requestAnimationFrame(paint);return()=>{if(frame.current)cancelAnimationFrame(frame.current)}},[paint]);
- useEffect(()=>{const h=host.current;if(!h)return;const ro=new ResizeObserver(()=>{paint();if(state==='ready'&&source.current){/* keep current zoom/pan on normal resizes */}});ro.observe(h);return()=>ro.disconnect()},[paint,state]);
+ useEffect(()=>{const h=host.current;if(!h)return;const ro=new ResizeObserver(()=>{paint();if(state==='ready'&&source.current){}});ro.observe(h);return()=>ro.disconnect()},[paint,state]);
 
  function zoomAt(factor:number,cx?:number,cy?:number){const h=host.current,i=source.current;if(!h||!i)return;const rect=h.getBoundingClientRect(),px=cx??rect.width/2,py=cy??rect.height/2;setView(v=>{const ns=Math.max(.025,Math.min(12,v.scale*factor));const ix=(px-v.x)/v.scale,iy=(py-v.y)/v.scale;return{scale:ns,x:px-ix*ns,y:py-iy*ns}})}
  function wheel(e:React.WheelEvent){e.preventDefault();const rect=e.currentTarget.getBoundingClientRect();zoomAt(e.deltaY<0?1.13:.885,e.clientX-rect.left,e.clientY-rect.top)}

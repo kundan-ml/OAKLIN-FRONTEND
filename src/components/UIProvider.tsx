@@ -18,6 +18,9 @@ export type UiPreferences={
   historyWidth:number;
   viewerWidth:number;
   detailsWidth:number;
+  bottomHeight:number;
+  showHistory:boolean;
+  showDetails:boolean;
   showCommandBar:boolean;
   showKpis:boolean;
   showTray:boolean;
@@ -25,22 +28,23 @@ export type UiPreferences={
 };
 
 const DEFAULTS:UiPreferences={
-  theme:'midnight',accent:'azure',density:'compact',fontScale:1,radius:8,glass:.98,motion:true,glow:false,
-  sidebarCollapsed:false,historyWidth:.80,viewerWidth:1.48,detailsWidth:.80,showCommandBar:false,showKpis:true,showTray:true,showWorkspace:true
+  theme:'midnight',accent:'azure',density:'compact',fontScale:.96,radius:6,glass:.99,motion:true,glow:false,
+  sidebarCollapsed:true,historyWidth:.66,viewerWidth:1.52,detailsWidth:.78,bottomHeight:188,
+  showHistory:true,showDetails:true,showCommandBar:false,showKpis:true,showTray:true,showWorkspace:true
 };
 
 type Ctx={prefs:UiPreferences;set:<K extends keyof UiPreferences>(key:K,value:UiPreferences[K])=>void;patch:(value:Partial<UiPreferences>)=>void;reset:()=>void};
 const UIContext=createContext<Ctx|null>(null);
 
-const ACCENT_HUES:Record<AccentPreset,string>={azure:'207',cyan:'190',violet:'252',emerald:'155'};
+const ACCENT_HUES:Record<AccentPreset,string>={azure:'211',cyan:'190',violet:'252',emerald:'155'};
 
 export function UIProvider({children}:{children:React.ReactNode}){
   const[prefs,setPrefs]=useState<UiPreferences>(DEFAULTS);
   useEffect(()=>{
-    try{const saved=localStorage.getItem('lens-ui-prefs-v6');if(saved)setPrefs({...DEFAULTS,...JSON.parse(saved)})}catch{}
+    try{const saved=localStorage.getItem('lens-ui-prefs-v7');if(saved)setPrefs({...DEFAULTS,...JSON.parse(saved)})}catch{}
   },[]);
   useEffect(()=>{
-    try{localStorage.setItem('lens-ui-prefs-v6',JSON.stringify(prefs))}catch{}
+    try{localStorage.setItem('lens-ui-prefs-v7',JSON.stringify(prefs))}catch{}
     const root=document.documentElement;
     root.dataset.theme=prefs.theme;
     root.dataset.density=prefs.density;
@@ -52,6 +56,7 @@ export function UIProvider({children}:{children:React.ReactNode}){
     root.style.setProperty('--history-fr',`${prefs.historyWidth}fr`);
     root.style.setProperty('--viewer-fr',`${prefs.viewerWidth}fr`);
     root.style.setProperty('--details-fr',`${prefs.detailsWidth}fr`);
+    root.style.setProperty('--dashboard-bottom-height',`${prefs.bottomHeight}px`);
     root.dataset.glow=prefs.glow?'on':'off';
     root.dataset.sidebar=prefs.sidebarCollapsed?'collapsed':'expanded';
   },[prefs]);
