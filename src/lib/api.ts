@@ -1,7 +1,17 @@
 import type {DatasetSummary,InspectionResult,Job,LogRow,Sample,SystemInfo,StorageRuntime} from '@/types';
 export const API=process.env.NEXT_PUBLIC_API_URL||'http://localhost:8000/api/v1';
 export const WS_API=API.replace(/^http/,'ws');
-async function request<T>(path:string,init?:RequestInit):Promise<T>{const r=await fetch(`${API}${path}`,{...init,headers:{...(init?.body instanceof FormData?{}:{'Content-Type':'application/json'}),...(init?.headers||{})},cache:'no-store'});if(!r.ok){let msg=`HTTP ${r.status}`;try{const j=await r.json();msg=j.detail||JSON.stringify(j)}catch{}throw new Error(msg)}const ct=r.headers.get('content-type')||'';return (ct.includes('application/json')?await r.json():await r.text()) as T}
+async function request<T>(path:string,init?:RequestInit):Promise<T>{
+  const controller=new AbortController();
+  const isUpload=typeof FormData!=='undefined'&&init?.body instanceof FormData;
+  const timeout=window.setTimeout(()=>controller.abort(),isUpload?120000:20000);
+  try{
+    const r=await fetch(`${API}${path}`,{...init,signal:init?.signal||controller.signal,headers:{...(isUpload?{}:{'Content-Type':'application/json'}),...(init?.headers||{})},cache:'no-store'});
+    if(!r.ok){let msg=`HTTP ${r.status}`;try{const j=await r.json();msg=j.detail||j.message||JSON.stringify(j)}catch{}throw new Error(msg)}
+    const ct=r.headers.get('content-type')||'';return (ct.includes('application/json')?await r.json():await r.text()) as T;
+  }catch(error){if(error instanceof DOMException&&error.name==='AbortError')throw new Error('Request timed out. Check the FastAPI backend connection.');throw error}
+  finally{window.clearTimeout(timeout)}
+}
 export const api={
  system:()=>request<SystemInfo>('/system/info'),capabilities:()=>request<any[]>('/system/capabilities'),setMode:(mode:'AUTO'|'SETUP')=>request<any>('/system/mode',{method:'POST',body:JSON.stringify({mode})}),
  login:(username:string,role:string)=>request<any>('/auth/login',{method:'POST',body:JSON.stringify({username,role,password:''})}),logout:()=>request<any>('/auth/logout',{method:'POST'}),
@@ -17,7 +27,7 @@ export const api={
  registrationRun:(did:string,sid:string,head=1)=>request<any>('/registration/run',{method:'POST',body:JSON.stringify({dataset_id:did,sample_id:sid,camera_head:head})}),registrationCurrent:()=>request<any>('/registration/current'),registrationOutbox:()=>request<any>('/registration/save-outbox',{method:'POST'}),registrationInbox:()=>request<any>('/registration/direct-inbox',{method:'POST'}),
  bvScripts:()=>request<any>('/bv/scripts')
 };
-export const previewUrl=(did:string,sid:string,ch:string)=>`${API}/datasets/${did}/preview/${sid}/${ch}.png`;
+export const previewUrl=(did:string,sid:string,ch:string)=>`/api/image?datasetId=${encodeURIComponent(did)}&sampleId=${encodeURIComponent(sid)}&channel=${encodeURIComponent(ch)}`;
 export const archiveUrl=(did:string)=>`${API}/actions/archive/${did}`;
 export const manualUrl=()=>`${API}/system/manual`;
 export const focusValuesUrl=(did:string,sid:string,ch:string,tab:string)=>`${API}/setup/focus/save-values`; // POST endpoint; use api helper if needed
